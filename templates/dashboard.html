@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Membership App{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Dashboard</h1>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Total Members</h6>
+                <h2 id="totalMembers">0</h2>
+                <small class="text-success">Active Members</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Total Contributed</h6>
+                <h2 id="totalContributed">₦0</h2>
+                <small class="text-info">This cycle</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Outstanding Loans</h6>
+                <h2 id="outstandingLoans">₦0</h2>
+                <small class="text-warning">Pending approval</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Collection Rate</h6>
+                <h2 id="collectionRate">0%</h2>
+                <small class="text-secondary">of target</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts & Details -->
+<div class="row">
+    <!-- Contribution Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Contribution Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="contributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Payments</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentPayments">
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Section -->
+<div class="row mt-4" id="adminSection" style="display: none;">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Pending Loan Requests</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingLoans">
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">No pending requests</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Overdue Contributions</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Amount Due</th>
+                            <th>Days Late</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overdueContributions">
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">No overdue items</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary me-2" onclick="window.location.href='/members'">
+                    <i class="bi bi-people"></i> Manage Members
+                </button>
+                <button class="btn btn-success me-2" onclick="window.location.href='/contributions'">
+                    <i class="bi bi-cash-flow"></i> View Contributions
+                </button>
+                <button class="btn btn-warning me-2" onclick="window.location.href='/loans'">
+                    <i class="bi bi-coin"></i> Review Loans
+                </button>
+                <button class="btn btn-info me-2" onclick="window.location.href='/payments'">
+                    <i class="bi bi-receipt"></i> Record Payment
+                </button>
+                <button class="btn btn-secondary" id="adminBtn" style="display: none;" onclick="window.location.href='/admin'">
+                    <i class="bi bi-gear"></i> Admin Panel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.min.js"></script>
+<script>
+    let dashboardChart = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboard();
+        
+        // Show admin section if user is admin
+        if (currentUser && ['super_admin', 'admin'].includes(currentUser.role)) {
+            document.getElementById('adminSection').style.display = 'block';
+            document.getElementById('adminBtn').style.display = 'inline-block';
+            loadAdminData();
+        }
+    });
+
+    async function loadDashboard() {
+        try {
+            showLoader();
+            
+            const { status, data } = await apiCall('GET', '/admin/dashboard');
+            
+            if (status !== 200) {
+                console.error('Failed to load dashboard:', data);
+                return;
+            }
+            
+            // Update metrics
+            document.getElementById('totalMembers').textContent = data.members.total;
+            document.getElementById('totalContributed').textContent = formatCurrency(data.contributions.total_paid);
+            document.getElementById('outstandingLoans').textContent = formatCurrency(data.loans.total_requested);
+            document.getElementById('collectionRate').textContent = Math.round(data.contributions.collection_rate) + '%';
+            
+            // Chart data
+            const chartCtx = document.getElementById('contributionChart').getContext('2d');
+            
+            if (dashboardChart) {
+                dashboardChart.destroy();
+            }
+            
+            dashboardChart = new Chart(chartCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Paid', 'Pending'],
+                    datasets: [{
+                        data: [
+                            data.contributions.total_paid,
+                            data.contributions.total_due - data.contributions.total_paid
+                        ],
+                        backgroundColor: ['#198754', '#ffc107'],
+                        borderColor: ['#fff', '#fff'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+        } catch (e) {
+            console.error('Error loading dashboard:', e);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    async function loadAdminData() {
+        try {
+            // Load pending loans
+            const { status: loansStatus, data: loansData } = await apiCall('GET', '/admin/loans/pending');
+            
+            if (loansStatus === 200 && loansData.loans.length > 0) {
+                const loansHtml = loansData.loans.map(loan => `
+                    <tr>
+                        <td>${loan.member_email}</td>
+                        <td>${formatCurrency(loan.amount_requested)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="approveLoan('${loan.id}')">
+                                Approve
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                document.getElementById('pendingLoans').innerHTML = loansHtml;
+            }
+            
+        } catch (e) {
+            console.error('Error loading admin data:', e);
+        }
+    }
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+            minimumFractionDigits: 0
+        }).format(value);
+    }
+
+    function approveLoan(loanId) {
+        const amount = prompt('Enter approved amount:');
+        if (!amount) return;
+        
+        apiCall('POST', `/loans/${loanId}/approve`, { amount_approved: parseFloat(amount) })
+            .then(({ status, data }) => {
+                if (status === 200) {
+                    alert('Loan approved!');
+                    loadAdminData();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+    }
+</script>
+{% endblock %}

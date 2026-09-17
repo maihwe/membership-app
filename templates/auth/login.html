@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Membership App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0d6efd;
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 8px;
+        }
+        
+        .form-control {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+        
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .btn-login {
+            background-color: #0d6efd;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 10px 20px;
+            width: 100%;
+            border-radius: 6px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-login:hover {
+            background-color: #0a58ca;
+        }
+        
+        .btn-login:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .alert {
+            border-radius: 6px;
+            border: none;
+            margin-bottom: 20px;
+        }
+        
+        .step-indicator {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #dee2e6;
+            transition: background-color 0.3s ease;
+        }
+        
+        .step.active {
+            background-color: #0d6efd;
+        }
+        
+        #verifyStep {
+            display: none;
+        }
+        
+        .info-text {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1><i class="bi bi-building"></i> Membership</h1>
+            <p>Passwordless Authentication</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1"></div>
+            <div class="step" id="step2"></div>
+        </div>
+
+        <!-- Error Alert -->
+        <div id="alertBox"></div>
+
+        <!-- Step 1: Request OTP -->
+        <div id="requestStep">
+            <h5 style="font-weight: 600; margin-bottom: 20px;">Enter Your Email</h5>
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input 
+                    type="email" 
+                    class="form-control" 
+                    id="email" 
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                >
+                <p class="info-text">We'll send you a secure login code</p>
+            </div>
+            <button class="btn btn-login" onclick="requestOTP()">
+                <span id="requestBtn">Send Login Code</span>
+                <span id="requestSpinner" style="display: none;">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                </span>
+            </button>
+        </div>
+
+        <!-- Step 2: Verify OTP -->
+        <div id="verifyStep">
+            <h5 style="font-weight: 600; margin-bottom: 20px;">Enter Verification Code</h5>
+            <p class="info-text" style="margin-bottom: 20px;">
+                A 6-digit code was sent to <strong id="verifyEmail"></strong>
+            </p>
+            <div class="form-group">
+                <label class="form-label">Verification Code</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="code" 
+                    placeholder="000000"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    autocomplete="off"
+                >
+                <p class="info-text">Check your email for the code (valid for 10 minutes)</p>
+            </div>
+            <button class="btn btn-login" onclick="verifyOTP()">
+                <span id="verifyBtn">Verify & Login</span>
+                <span id="verifySpinner" style="display: none;">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                </span>
+            </button>
+            <button class="btn btn-outline-secondary" style="width: 100%; margin-top: 10px;" onclick="backToEmail()">
+                Back
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let requestId = null;
+        let userEmail = null;
+
+        function showAlert(message, type = 'danger') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+
+        function requestOTP() {
+            userEmail = document.getElementById('email').value.trim().toLowerCase();
+            
+            if (!userEmail) {
+                showAlert('Please enter your email address');
+                return;
+            }
+            
+            if (!userEmail.includes('@')) {
+                showAlert('Please enter a valid email address');
+                return;
+            }
+            
+            const btn = document.getElementById('requestBtn');
+            const spinner = document.getElementById('requestSpinner');
+            btn.style.display = 'none';
+            spinner.style.display = 'inline';
+            
+            fetch('/api/auth/request-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email: userEmail })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error);
+                    btn.style.display = 'inline';
+                    spinner.style.display = 'none';
+                    return;
+                }
+                
+                requestId = data.request_id;
+                
+                // Show code for testing (REMOVE IN PRODUCTION)
+                if (data.code) {
+                    showAlert(`<strong>Test Code: ${data.code}</strong>`, 'info');
+                }
+                
+                // Switch to verify step
+                document.getElementById('requestStep').style.display = 'none';
+                document.getElementById('verifyStep').style.display = 'block';
+                document.getElementById('verifyEmail').textContent = userEmail;
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+                document.getElementById('code').focus();
+            })
+            .catch(e => {
+                showAlert('Error: ' + e.message);
+                btn.style.display = 'inline';
+                spinner.style.display = 'none';
+            });
+        }
+
+        function verifyOTP() {
+            const code = document.getElementById('code').value.trim();
+            
+            if (!code || code.length !== 6) {
+                showAlert('Please enter a valid 6-digit code');
+                return;
+            }
+            
+            const btn = document.getElementById('verifyBtn');
+            const spinner = document.getElementById('verifySpinner');
+            btn.style.display = 'none';
+            spinner.style.display = 'inline';
+            
+            fetch('/api/auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: userEmail,
+                    code: code,
+                    request_id: requestId
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error);
+                    btn.style.display = 'inline';
+                    spinner.style.display = 'none';
+                    return;
+                }
+                
+                // Store token
+                localStorage.setItem('session_token', data.token);
+                
+                // Redirect to dashboard
+                showAlert('Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 1000);
+            })
+            .catch(e => {
+                showAlert('Error: ' + e.message);
+                btn.style.display = 'inline';
+                spinner.style.display = 'none';
+            });
+        }
+
+        function backToEmail() {
+            document.getElementById('requestStep').style.display = 'block';
+            document.getElementById('verifyStep').style.display = 'none';
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('email').focus();
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (document.getElementById('requestStep').style.display !== 'none') {
+                    requestOTP();
+                } else {
+                    verifyOTP();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
