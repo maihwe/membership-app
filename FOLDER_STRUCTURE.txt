@@ -1,0 +1,44 @@
+membership-app/                    ← Create this root folder
+│
+├── app_updated.py                 ← Rename to: app.py
+├── models.py
+├── config.py
+├── auth.py
+├── run.py
+├── init_db.py
+├── requirements.txt
+├── .env.example
+├── Dockerfile
+├── docker-compose.yml
+│
+├── routes_auth.py                 ← Keep in root (Flask will find them)
+├── routes_members.py
+├── routes_contributions.py
+├── routes_loans.py
+├── routes_payments.py
+├── routes_messages.py
+├── routes_admin.py
+│
+├── templates/                      ← Create this folder
+│   ├── base.html                  ← Rename from: templates_base.html
+│   ├── index.html                 ← Create empty file (optional)
+│   ├── auth/                       ← Create this subfolder
+│   │   └── login.html             ← Rename from: templates_auth_login.html
+│   ├── dashboard.html             ← Rename from: templates_dashboard.html
+│   ├── members.html               ← Rename from: templates_members.html
+│   └── (other templates here)
+│
+├── static/                         ← Create this folder (for CSS/JS/images)
+│   ├── css/
+│   └── js/
+│
+├── logs/                          ← Created automatically by app
+├── uploads/                       ← Created automatically by app
+│
+├── membership.db                  ← Created by init_db.py
+│
+├── README.md                      ← Documentation
+├── QUICKSTART.md
+├── QUICK_REFERENCE.md
+├── DELIVERY_INDEX.md
+└── PROJECT_MANIFEST.md
