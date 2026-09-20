@@ -7,7 +7,8 @@ Creates and configures the Flask app with:
 - Error handlers
 - Request/response middleware
 """
-
+import logging
+import logging.handlers
 from flask import Flask, jsonify, render_template, request
 from datetime import datetime
 import logging
@@ -60,7 +61,6 @@ def _setup_logging(app):
     os.makedirs('logs', exist_ok=True)
     
     if not app.debug:
-        import logging.handlers
         
         file_handler = logging.handlers.RotatingFileHandler(
             'logs/membership.log',
