@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import create_app - updated import path
-from app_updated import create_app
+from app import create_app
 
 # Create app instance (for gunicorn)
 app = create_app()
