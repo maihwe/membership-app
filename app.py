@@ -7,9 +7,8 @@ Creates and configures the Flask app with:
 - Error handlers
 - Request/response middleware
 """
-import logging
 import logging.handlers
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, redirect
 from datetime import datetime
 import logging
 import os
@@ -96,9 +95,18 @@ def _register_blueprints(app):
     app.register_blueprint(admin_routes.bp)
     
     # Home route
+    @app.route('/members', methods=['GET'])
+    def members_page():
+        return render_template('members.html')
+
+
+    @app.route('/contributions', methods=['GET'])
+    def contributions_page():
+        return render_template('contributions.html')
+
     @app.route('/')
     def index():
-        return render_template('index.html')
+        return redirect('/api/auth/login')
     
     @app.route('/api/health', methods=['GET'])
     def health():

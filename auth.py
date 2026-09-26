@@ -179,7 +179,7 @@ class OTPManager:
             raise AuthError("Too many incorrect attempts. Request a new code", code=429)
         
         # Verify code using constant-time comparison
-        computed_hash = OTPGenerator.hash_code(email, request_id, code)
+        computed_hash = OTPGenerator.hash_code(email, 'pending', code)
         
         if not OTPGenerator.constant_time_compare(computed_hash, challenge.code_hash):
             # Wrong code

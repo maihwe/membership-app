@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Contributions - Membership App{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>
+            <i class="bi bi-cash-flow"></i>
+            Contributions
+        </h2>
+        <p class="text-muted mb-0">
+            View and track member contributions.
+        </p>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="text-muted">Total Contributions</h6>
+                <h3 id="totalContributions">0</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="text-muted">Records</h6>
+                <h3 id="totalRecords">0</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="text-muted">Overdue</h6>
+                <h3 id="overdueContributions">0</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error -->
+<div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+
+<!-- Contributions Table -->
+<div class="card">
+    <div class="card-header">
+        Contribution Records
+    </div>
+
+    <div class="card-body">
+
+        <div id="loadingMessage" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 mb-0">Loading contributions...</p>
+        </div>
+
+        <div class="table-responsive" id="tableContainer" style="display: none;">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Cycle</th>
+                        <th>Amount Due</th>
+                        <th>Amount Paid</th>
+                        <th>Status</th>
+                        <th>Due Date</th>
+                    </tr>
+                </thead>
+
+                <tbody id="contributionsTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="emptyMessage" class="text-center text-muted py-4" style="display: none;">
+            No contribution records found.
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card h3 {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        loadContributions();
+    });
+
+    async function loadContributions() {
+        const loadingMessage = document.getElementById('loadingMessage');
+        const tableContainer = document.getElementById('tableContainer');
+        const emptyMessage = document.getElementById('emptyMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const tableBody = document.getElementById('contributionsTableBody');
+
+        try {
+            const response = await fetch('/api/contributions', {
+                headers: {
+                    'Authorization': `Bearer ${sessionToken}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load contributions');
+            }
+
+            loadingMessage.style.display = 'none';
+
+            document.getElementById('totalRecords').textContent = data.total || 0;
+
+            let totalPaid = 0;
+            let overdue = 0;
+
+            tableBody.innerHTML = '';
+
+            if (!data.contributions || data.contributions.length === 0) {
+                emptyMessage.style.display = 'block';
+                document.getElementById('totalContributions').textContent = '₦0';
+                document.getElementById('overdueContributions').textContent = '0';
+                return;
+            }
+
+            data.contributions.forEach(function (contribution) {
+                totalPaid += Number(contribution.amount_paid || 0);
+
+                if (contribution.is_overdue) {
+                    overdue++;
+                }
+
+                const row = document.createElement('tr');
+
+                row.innerHTML = `
+                    <td>${escapeHtml(contribution.cycle || 'N/A')}</td>
+                    <td>₦${formatAmount(contribution.amount_due)}</td>
+                    <td>₦${formatAmount(contribution.amount_paid)}</td>
+                    <td>
+                        <span class="badge ${getStatusClass(contribution.status)}">
+                            ${escapeHtml(contribution.status || 'Unknown')}
+                        </span>
+                    </td>
+                    <td>${formatDate(contribution.due_date)}</td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+
+            document.getElementById('totalContributions').textContent =
+                `₦${formatAmount(totalPaid)}`;
+
+            document.getElementById('overdueContributions').textContent = overdue;
+
+            tableContainer.style.display = 'block';
+
+        } catch (error) {
+            loadingMessage.style.display = 'none';
+            errorMessage.textContent = error.message;
+            errorMessage.style.display = 'block';
+        }
+    }
+
+    function formatAmount(amount) {
+        return Number(amount || 0).toLocaleString('en-NG', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) {
+            return 'N/A';
+        }
+
+        const date = new Date(dateString);
+
+        if (Number.isNaN(date.getTime())) {
+            return dateString;
+        }
+
+        return date.toLocaleDateString('en-NG');
+    }
+
+    function getStatusClass(status) {
+        switch (String(status || '').toLowerCase()) {
+            case 'paid':
+                return 'bg-success';
+
+            case 'pending':
+                return 'bg-warning text-dark';
+
+            case 'overdue':
+                return 'bg-danger';
+
+            case 'partial':
+                return 'bg-info text-dark';
+
+            default:
+                return 'bg-secondary';
+        }
+    }
+
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

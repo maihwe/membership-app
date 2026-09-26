@@ -241,7 +241,7 @@
             sessionToken = getCookie('session_token') || localStorage.getItem('session_token');
             
             if (!sessionToken && !window.location.pathname.startsWith('/auth')) {
-                window.location.href = '/auth/login';
+                window.location.href = '/api/auth/login';
                 return;
             }
             
@@ -308,7 +308,7 @@
             sessionToken = null;
             localStorage.removeItem('session_token');
             document.cookie = 'session_token=; max-age=0';
-            window.location.href = '/auth/login';
+            window.location.href = '/api/auth/login';
         }
 
         // Utility: Get cookie value

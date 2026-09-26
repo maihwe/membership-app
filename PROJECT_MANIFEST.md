@@ -36,7 +36,7 @@
 - `loans` - Loan tracking
 - `loan_repayments` - Repayment schedule
 - `payments` - Payment records
-- `messages` - Internal communications
+- `messages` - Internal communications 
 - `sessions` - Active login tokens
 - `otp_challenges` - OTP tracking
 - `audit_logs` - Activity history
